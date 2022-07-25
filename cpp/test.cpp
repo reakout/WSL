@@ -1,6 +1,11 @@
 #include<iostream>
+#include <string.h>
 using namespace std;
-
+class Person
+{
+	public:
+		string name;
+};
 int a(){
 	return 2;
 }
