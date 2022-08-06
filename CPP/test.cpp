@@ -3,15 +3,15 @@
 using namespace std;
 class Person
 {
-	public:
-		string name;
+  public:
+    string name;
 };
 int a(){
-	return 2;
+  return 2;
 }
 int b(){
-	float b = 10;
-	return 2;
+  float b = 10;
+  return 2;
 }
 int main()
 {
