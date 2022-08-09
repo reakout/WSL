@@ -1,4 +1,5 @@
 #include<iostream>
+#include <ostream>
 #include <string.h>
 using namespace std;
 class Person
@@ -16,6 +17,6 @@ int b(){
 int main()
 {
   cout<<"test1111!"<<endl;
-  cout<<a()<<endl;
+  cout << "tes" << endl;
   return 0;
 }
