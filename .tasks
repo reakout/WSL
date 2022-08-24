@@ -3,7 +3,7 @@
 
 # define a new task named "file-build"
 [file-build]
-command:c,cpp=gcc -O3 -Wall "$(VIM_FILEPATH)" -o "$(VIM_PATHNOEXT).o" -lstdc++ -lm -msse3
+command:c,cpp=clang++ -O3 -Wall "$(VIM_FILEPATH)" -o "$(VIM_PATHNOEXT).o" -std=c++2a
 command:go=go build -o "$(VIM_PATHNOEXT)" "$(VIM_FILEPATH).o"
 command:rust=rustc "$(VIM_FILEPATH)" -o "$(VIM_PATHNOEXT).o"
 command:make=make -f "$(VIM_FILEPATH)"
