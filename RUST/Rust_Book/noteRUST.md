@@ -1,8 +1,8 @@
-# `rust`权威指南读书笔记
+# `RUST`权威指南读书笔记
 
 [TOC]
 
-## Char3
+## Char3 通用编程概念
 
 ### 变量与可变性
 
@@ -181,8 +181,156 @@ fn main() {
 
 #### 语句和表达式
 
-函数体由一系列语句组成，但也可以选择用表达式结尾。`rust`是一门特别的基于表达式的语言，选择语句或者表达式将会影响到函数体。
+函数体由一系列语句组成，但也可以选择用表达式结尾。`rust`是一门特别的**基于表达式**的语言，选择语句或者表达式将会影响到函数体。
 
-**语句**(statement)
+**语句**(statement)执行操作但不返回值。如`let y = 6;`
 
-**表达式**(expression)
+**表达式**(expression)计算并产生一个值，语句中的一部分也可以是表达式，比如上面的`6`就是一个表达式。函数**调用**是表达式，宏调用也是表达式，创建新作用域的大括号`{}`也是表达式
+
+函数**定义**本身也是语句。和c赋值语句不同，语句没有返回值，所以不能写连等如`let x = (let y = 6);`
+
+
+
+表达式的结尾没有分号。如果在表达式末尾加上分号，就会转换为不会返回值的语句
+
+```rust
+fn main() {
+    let y = {
+        let x = 3;
+        x + 1   // 没有;
+    };
+
+    println!("The value of y is: {}", y);
+}
+```
+
+如其中y后的那一串`{}`里的就是表达式
+
+#### 带返回值的函数
+
+`rust`不像c一样写显式返回值，默认可以用隐式返回最后一个表达式的值，如果用`return`关键字和指定值，可以从函数提前返回。函数返回值的类型写在参数列表后用 `->`接类型表示。
+
+```rust
+fn five() -> i32 {
+    5
+}
+
+fn main() {
+    let x = five();
+
+    println!("The value of x is: {}", x);
+}
+```
+
+如果带上分号，会让函数从表达式变成语句，没有返回值（即会返回一个空元组类型表示没有返回值），导致类型和i32不匹配报错。
+
+
+
+### 注释
+
+`rust`通用注释是`//`，还有一种文档注释留待之后再说。
+
+
+
+### 控制流
+
+#### if表达式
+
+if else用法类似c中，但是if后必须是一个`bool`类型的表达式，`rust`不会自动把非布尔值转换成布尔值。
+
+在多个if串else if中会检测第一个为真的if条件执行
+
+##### let中使用if
+
+类似于cpp中的三目运算符 ?:
+
+如
+
+```rust
+fn main() {
+    let condition = true;
+    let number = if condition { 5 } else { 6 };
+
+    println!("The value of number is: {}", number);
+}
+```
+
+if表达式在if分支和else分支的结果必须是相同类型，不匹配的话会报错。
+
+#### 循环
+
+`rust`有三种循环，`loop` `while` `for`
+
+##### loop
+
+无条件循环，可用continue和break跳出，使用时可以带上循环标签（`loop label`）配合使用来跳出指定的循环而非默认的内层循环
+
+```rust
+// 无控制loop
+fn main() {
+    loop {
+        println!("again!");
+    }
+}
+```
+
+```rust
+// 带控制loop
+fn main() {
+    let mut count = 0;
+    'counting_up: loop {
+        println!("count = {}", count);
+        let mut remaining = 10;
+
+        loop {
+            println!("remaining = {}", remaining);
+            if remaining == 9 {
+                break;
+            }
+            if count == 2 {
+                break 'counting_up;
+            }
+            remaining -= 1;
+        }
+
+        count += 1;
+    }
+    println!("End count = {}", count);
+}
+```
+
+##### while
+
+用法类似c，不过条件不用打括号，且必须为`bool`类型
+
+##### for
+
+`rust`中的for循环可以实现类似`python`中用法，主要用于遍历时有效避免`panic`
+
+```rust
+fn main() {
+    let a = [10, 20, 30, 40, 50];
+
+    for element in a {
+        println!("the value is: {}", element);
+    }
+}
+```
+
+一个反转区间倒计时的例子
+
+```rust
+fn main() {
+    for number in (1..4).rev() {
+        println!("{}!", number);
+    }
+    println!("LIFTOFF!!!");
+}
+```
+
+以上代码中rev是反转方法。
+
+
+
+## Char4 所有权
+
