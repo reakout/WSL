@@ -236,10 +236,69 @@
 
 进阶版本`egrep`和`fgrep`相当于 `grep -E`和`grep -F` 前者可以使用`POSIX`拓展正则表达式，后者是固化表达式的搜索，即忽略转义符之类的
 
-### tar
+#### tar
 
 三个使用范例
 
 `tar -cvf test.tar test/ test1/`把后两个目录压缩到`test.tar`里
 
 `tar -tf test.tar`会列出该压缩文件的内容（但是不会提取文件）
+
+`tar -xvf test.tar`会解压该文件
+
+`.tgz`结尾的文件实际是用`gzip`(gnuzip)压缩的`tar`文件，应该使用
+
+`tar -zxvf test.tar`解压
+
+## 理解shell
+
+### shell的继承关系
+
+命令列表：直接把命令用`;`分隔开，相当于依次执行这些命令，如
+
+`pwd ; ls ; cd /etc ; pwd ; cd ; pwd ; ls ; echo $BASH_SUBSHELL`
+
+其中最后一项环境参数输出0表示没有子shell，否则表示有
+
+一种等价写法是
+
+`{pwd ; ls ; cd /etc ; pwd ; cd ; pwd ; ls ; echo $BASH_SUBSHELL;}`
+
+进程列表：生成一个子shell并在子shell中执行，使用小括号，如下
+
+`(pwd ; ls ; cd /etc ; pwd ; cd ; pwd ; ls ; echo $BASH_SUBSHELL)`
+
+注意到最后的`BASH_SUBSHELL`参数实际是跟使用的shell相关的，比如在本机的`zsh`环境中该参数正常应该是`ZSH_SUBSHELL`
+
+用进程列表会得到一个新的子shell，并在其中执行并在执行完成后返回最一级父shell
+
+该语法，括号甚至可以嵌套括号进一步生成子shell
+
+如`( pwd ; (echo $BASH_SUBSHELL))`
+
+得到输出为2，即此时有两个子shell
+
+得到的输出是相对于执行命令时的shell进程的子shell深度，比如连续执行三次`bash`后执行以上命令得到的仍然是2
+
+#### 子shell用法
+
+##### 后台模式
+
+在命令尾部增加`&`会让命令置入后台模式
+
+比如`sleep 10&`前者代表睡眠10s后再进入接受输入的状态，增加`&`后把该进程放到后台挂起，此时可以用`ps`查看该进程
+
+放在后台挂起的进程执行后会得到两个返回值 `[job] pid`其中`[]`中为后台作业(ground job)号后者为pid
+
+使用`jobs`可以单独显示所有后台任务，增加`-l`选项还会输出pid
+
+##### 协程
+
+协程会同时做两件事：会在后台生成一个子shell，并在这个子shell中执行命令
+
+使用方法是`coproc command`相当于`command&`
+
+生成子shell的成本相当高，速度也慢
+
+#### 内建命令
+
