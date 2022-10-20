@@ -494,3 +494,201 @@ fn main() {
 
 #### 所有权与函数
 
+把值传递给函数在语义上和给变量赋值类似，可以发生移动和克隆。如下所示
+
+```rust
+fn main() {
+  let s = String::from("hello");  // s 进入作用域
+
+  takes_ownership(s);             // s 的值移动到函数里 ...
+                                  // ... 所以到这里不再有效
+
+  let x = 5;                      // x 进入作用域
+
+  makes_copy(x);                  // x 应该移动函数里，
+                                  // 但 i32 是 Copy 的，所以在后面可继续使用 x
+
+} // 这里, x 先移出了作用域，然后是 s。但因为 s 的值已被移走，
+  // 所以不会有特殊操作
+
+fn takes_ownership(some_string: String) { // some_string 进入作用域
+  println!("{}", some_string);
+} // 这里，some_string 移出作用域并调用 `drop` 方法。占用的内存被释放
+
+fn makes_copy(some_integer: i32) { // some_integer 进入作用域
+  println!("{}", some_integer);
+} // 这里，some_integer 移出作用域。不会有特殊操作
+```
+
+返回值也可以转移所有权，如下代码
+
+```rust
+fn main() {
+  let s1 = gives_ownership();         // gives_ownership 将返回值
+                                      // 移给 s1
+
+  let s2 = String::from("hello");     // s2 进入作用域
+
+  let s3 = takes_and_gives_back(s2);  // s2 被移动到
+                                      // takes_and_gives_back 中,
+                                      // 它也将返回值移给 s3
+} // 这里, s3 移出作用域并被丢弃。s2 也移出作用域，但已被移走，
+  // 所以什么也不会发生。s1 移出作用域并被丢弃
+
+fn gives_ownership() -> String {           // gives_ownership 将返回值移动给
+                                           // 调用它的函数
+
+  let some_string = String::from("yours"); // some_string 进入作用域
+
+  some_string                              // 返回 some_string 并移出给调用的函数
+}
+
+// takes_and_gives_back 将传入字符串并返回该值
+fn takes_and_gives_back(a_string: String) -> String { // a_string 进入作用域
+
+  a_string  // 返回 a_string 并移出给调用的函数
+}
+```
+
+所有权遵循的相同模式：将值赋给另一个变量时移动它。当持有堆里数据值的变量离开作用域时用`drop`清理掉。
+
+一个常用的场景是怎么使用值而不需要专门返回所有权，为此提供的功能是引用(reference)
+
+### 引用与借用
+
+#### 基本概念
+
+不使用引用时为了将参数的使用权返回，一个常用方法是返回一个元组，如计算字符串长度的代码如下
+
+```rust
+fn main() {
+    let s1 = String::from("hello");
+
+    let (s2, len) = calculate_length(s1);
+
+    println!("The length of '{}' is {}.", s2, len);
+}
+
+fn calculate_length(s: String) -> (String, usize) {
+    let length = s.len(); // len() 返回字符串的长度
+
+    (s, length)
+}
+```
+
+显得非常形式主义，使用引用的改进方案如下
+
+```rust
+fn main() {
+    let s1 = String::from("hello");
+
+    let len = calculate_length(&s1);
+
+    println!("The length of '{}' is {}.", s1, len);
+}
+
+fn calculate_length(s: &String) -> usize {
+    s.len()
+}
+```
+
+引用（`&`）允许使用值而不获取使用权
+
+与CPP类似，有解引用操作（dereferencing）使用`*`运算符
+
+以上使用引用的示意图如下
+
+![&String s pointing at String s1](https://rustwiki.org/zh-CN/book/img/trpl04-05.svg)
+
+`&s1`创建了一个指向值`s1`的引用，但是并不拥有值，故引用停止时，其指向的值也不会被丢弃，函数使用引用作为参数时，无需返回值来交还所有权，因为压根儿未曾拥有过。
+
+创建一个引用的行为称为借用（borrow）
+
+与CPP不同，修改引用指向的变量是不行的，变量默认不可变，引用也一样。
+
+#### 可变引用
+
+同样加上`mut`关键字就可以实现对引用变量的修改
+
+```rust
+fn main() {
+    let mut s = String::from("hello");
+
+    change(&mut s);
+}
+
+fn change(some_string: &mut String) {
+    some_string.push_str(", world");
+}
+```
+
+可变引用有一个限制，同一时间只能有一个对某一特定数据的可变引用，很像os中的读写同步问题，用于避免数据竞争（data race），其发生条件：
+
+* 两个或更多指针同时访问同一数据
+* 至少有一个指针用来写入数据
+* 没有同步数据访问的机制
+
+数据竞争会导致未定义行为，且几乎无法追踪和修复，`rust`直接选择不编译存在数据竞争的代码
+
+可以通过大括号来创建新作用域来避免在一个作用域中的可变引用限制，如
+
+```rust
+fn main() {
+    let mut s = String::from("hello");
+
+    {
+        let r1 = &mut s;
+    } // r1 在这里离开了作用域，所以我们完全可以创建一个新的引用
+    // 注意到这里r1离开作用域后，这个变量实际被释放不可使用了
+
+    let r2 = &mut s;
+}
+```
+
+同样的规则也存在于同时使用可变与不可变引用中，即无法同时拥有可变引用和不可变引用。
+
+一个引用的作用域是从声明的地方一直持续到最后一次使用（或者离开作用域被释放）为止，故如下代码可正确执行
+
+```rust
+fn main() {
+    let mut s = String::from("hello");
+
+    let r1 = &s; // 没问题
+    let r2 = &s; // 没问题
+    println!("{} and {}", r1, r2);// 可以把引用当成一个指针对象，被调用后就drop了
+    // 此位置之后 r1 和 r2 不再使用
+
+    let r3 = &mut s; // 没问题
+    println!("{}", r3);
+}
+```
+
+`rust`使用非词法作用域声明周期(Non-Lexical Lifetimes NLL)来判断作用域结束前是否不再使用。
+
+#### 垂悬引用（Dangling Reference）
+
+类似于C/CPP中的垂悬指针。即指针指向的内存可能已经被分配给其他持有者，`rust`编译器确保引用永远不会垂悬，即当拥有数据引用时，编译器确保**数据不会在引用之前离开作用域**
+
+以下是一个报错示例
+
+```rust
+fn main() {
+    let reference_to_nothing = dangle();
+}
+
+fn dangle() -> &String { // dangle 返回一个字符串的引用
+
+    let s = String::from("hello"); // s 是一个新字符串
+
+    &s // 返回字符串 s 的引用
+} // 这里 s 离开作用域并被丢弃。其内存被释放。
+  // 危险！
+```
+
+#### 总结
+
+* 在任意给定时刻，要么只能有一个可变引用，要么只能有多个不可变引用
+* 引用必须总是有效的
+
+### 切片Slice类型
+
