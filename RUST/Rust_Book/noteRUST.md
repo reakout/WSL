@@ -692,3 +692,132 @@ fn dangle() -> &String { // dangle 返回一个字符串的引用
 
 ### 切片Slice类型
 
+`Slice`是另一个没有所有权的数据类型，用来引用集合中一段连续的元素序列，而不用引用整个集合
+
+以一个例子来引入：编写一个函数，接收一个字符串，并返回在该字符串中找到的第一个单词
+
+不需要得到`string`的所有权，所以参数用引用，但是没有真正获取部分字符串的办法，但可以妥协一波返回单词结尾的索引
+
+```rust
+fn first_word(s: &String) -> usize {
+    let bytes = s.as_bytes();// 将`String`转成字节数组
+
+    for (i, &item) in bytes.iter().enumerate() {
+        // .item()方法构建迭代器，返回集合中的每一个元素
+        // enumerate返回一个元组，其中i是索引,&item是单个字节
+        if item == b' ' {
+            return i;
+        }
+    }
+
+    s.len()
+}
+
+fn main() {
+    let mut s = String::from("hello world");
+
+    let word = first_word(&s); // word 的值为 5
+
+    s.clear(); // 这清空了字符串，使其等于 ""
+
+    // word 在此处的值仍然是 5，
+    // 但是没有更多的字符串让我们可以有效地应用数值 5。word 的值现在完全无效！
+}
+
+```
+
+生成得到的word和s是完全没有关系的，这样需要时刻担心同步关系，啰嗦且易错
+
+为此使用`Slice`方法来解决
+
+#### 字符串`slice`
+
+`String`中部分值的引用，使用方法如下
+
+```rust
+    let s = String::from("hello world");
+    let hello = &s[0..5];
+    let world = &s[6..11];
+```
+
+其中索引为左闭右开区间，实际创建的索引如下
+
+![world containing a pointer to the byte at index 6 of String s and a length 5](https://rustwiki.org/zh-CN/book/img/trpl04-06.svg)
+
+第一个索引可以省略表示从0开始，第二个索引也可以省略表示到最后
+
+同时省略只留点时表示取整个字符串的`slice`故以下几种写法等价
+
+```rust
+let s = String::from("hello");
+let slice = &s[0..2];
+let slice = &s[..2];
+
+let len = s.len();
+let slice = &s[2..len];
+let slice = &s[2..];
+
+let slice = &s[0..len];
+let slice = &s[..]
+```
+
+
+
+字符串`slice`的索引在ASCII字符集使用正常，在UTF-8字符使用时需要额外注意，在后续补充。
+
+再回头看之前的需求，用`slice`实现如下
+
+注意到slice的类型声明是`&str`
+
+```rust
+fn first_word(s: &String) -> &str {
+    let bytes = s.as_bytes();
+
+    for (i, &item) in bytes.iter().enumerate() {
+        if item == b' ' {
+            return &s[0..i];
+        }
+    }
+
+    &s[..]
+}
+
+fn main() {
+    let mut s = String::from("hello world");
+
+    let word = first_word(&s);
+
+    s.clear(); // error!
+
+    println!("the first word is: {}", word);
+}
+```
+
+此时该部分就会报错了，因为拥有了`word`是`s`的不可变引用，而`clear`会试图调用获取一个可变引用，而最后的`println!`又会使用`word`的不可变引用，即该不可变引用在此时必须还是有效，即此时会同时存在可变和不可变引用，会编译失败。
+
+#### 字符串字面量就是`slice`
+
+字符串字面量被储存在二进制文件中，声明一个字符串字面量
+
+`let s = "hello world"`时，`s`的类型是`&str`它会指向二进制程序特定位置的`slice`。这也导致字符串字面量是不可变的（因为变就意味着会需要另外一个引用）；`&str`是一个不可变引用
+
+#### 用字符串`slice`作为参数
+
+上面的代码中可以修改函数签名为
+
+`fn first_word(s: &str) -> &str {`
+
+这样利用了`deref coercions`的优势，在后面章节中会介绍。
+
+现在只需要了解，定义获取一个字符串`slice`而不是`String`引用的函数可以使得我们的API更加通用且不会丢失任何功能
+
+#### 其他类型的`slice`
+
+其他类型数组也有`slice`，如
+
+```rust
+let a = [1, 2, 3, 4];
+let slice = &a[1..2];
+```
+
+此时这个`slice`的类型是`&[i32]`，在`vector`部分会进一步详细描述。
