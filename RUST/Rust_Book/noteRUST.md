@@ -821,3 +821,101 @@ let slice = &a[1..2];
 ```
 
 此时这个`slice`的类型是`&[i32]`，在`vector`部分会进一步详细描述。
+
+
+
+## Char5 使用结构体组织相关联的数据
+
+### 定义与实例化结构体
+
+#### 定义
+
+```rust
+struct User {
+    active: bool,
+    username: String,
+    email: String,
+    sign_in_count: u64,
+}
+```
+
+各项称为字段（`field`）是以`,`分隔
+
+#### 创建
+
+```rust
+fn main() {
+    let user1 = User {
+        email: String::from("someone@example.com"),
+        username: String::from("someusername123"),
+        active: true,
+        sign_in_count: 1,
+    };
+}
+```
+
+给各个字段赋初值，以`key: value`的形式完成
+
+使用字段值使用`.`取值
+
+`rust`中的不允许某个字段为可变的，必须整个**实例**（注意不是定义时）是可变的
+
+### 变量与字段同名时的字段初始化简写语法
+
+当参数名与字段名完全相同时，可以使用字段初始化简写语法(field init shorthand)，如以下两个分别是简化前后的构造函数写法
+
+```rust
+fn build_user(email: String, username: String) -> User {
+    User {
+        email: email,
+        username: username,
+        active: true,
+        sign_in_count: 1,
+    }
+}
+fn build_user(email: String, username: String) -> User {
+    User {
+        email,
+        username,
+        active: true,
+        sign_in_count: 1,
+    }
+}
+```
+
+### 使用结构体更新语法从其他实例创建实例
+
+结构体更新语法(struct update syntax)使用旧实例的大部分值然后只改变部分值来创建新实例时使用。
+
+如已经有一个`user1`时，以下两种写法相同，后者使用结构体更新语法
+
+```rust
+let user2 = User {
+    active: user1.active,
+    username: user1.username,
+    email: String::from("another@example.com"),
+    sign_in_count: user1.sign_in_count,
+};
+let user2 = User {
+    email: String::from("another@example.com"),
+    ..user1
+};
+```
+
+使用结构体更新语法就像使用`=`的赋值，因为移动了数据，这里由于用了`String`的赋值，会导致`user2`创建后`user1`中的该部分失效，但是如果这里只是改了`u32`和`bool`类型的值时，则仍然有效。两种写法本质一样，使用更新语法赋值本质是值的移动，参见之前的内容，如果该类型实现了`copy trait`就仍可以在更新语法赋值后使用。
+
+### 使用没有命名字段的元组结构体来创建不同类型
+
+可定义与元组类似的结构体，称为元组结构体(tuple struct)，有结构体本身名称和字段类型，但是没有字段名，如
+
+```rust
+struct Color(i32, i32, i32);
+struct Point(i32, i32, i32);
+
+fn main() {
+    let black = Color(0, 0, 0);
+    let origin = Point(0, 0, 0);
+}
+```
+
+这里
