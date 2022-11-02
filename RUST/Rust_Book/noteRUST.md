@@ -860,7 +860,7 @@ fn main() {
 
 `rust`中的不允许某个字段为可变的，必须整个**实例**（注意不是定义时）是可变的
 
-### 变量与字段同名时的字段初始化简写语法
+#### 变量与字段同名时的字段初始化简写语法
 
 当参数名与字段名完全相同时，可以使用字段初始化简写语法(field init shorthand)，如以下两个分别是简化前后的构造函数写法
 
@@ -883,7 +883,7 @@ fn build_user(email: String, username: String) -> User {
 }
 ```
 
-### 使用结构体更新语法从其他实例创建实例
+#### 使用结构体更新语法从其他实例创建实例
 
 结构体更新语法(struct update syntax)使用旧实例的大部分值然后只改变部分值来创建新实例时使用。
 
@@ -904,7 +904,7 @@ let user2 = User {
 
 使用结构体更新语法就像使用`=`的赋值，因为移动了数据，这里由于用了`String`的赋值，会导致`user2`创建后`user1`中的该部分失效，但是如果这里只是改了`u32`和`bool`类型的值时，则仍然有效。两种写法本质一样，使用更新语法赋值本质是值的移动，参见之前的内容，如果该类型实现了`copy trait`就仍可以在更新语法赋值后使用。
 
-### 使用没有命名字段的元组结构体来创建不同类型
+#### 使用没有命名字段的元组结构体来创建不同类型
 
 可定义与元组类似的结构体，称为元组结构体(tuple struct)，有结构体本身名称和字段类型，但是没有字段名，如
 
@@ -918,4 +918,136 @@ fn main() {
 }
 ```
 
-这里
+这里虽然Color和Point的成员类型相同，但是属于不同类型。
+
+#### 没有任何字段的类单元结构体
+
+定义一个无字段的结构体，称为**类单元结构体(unit-like structs)**，类似于**unit类型()**，多用于后面实现`trait`时，一个定义使用例子如下
+
+```rust
+struct AlwaysEqual;
+fn main() {
+    let subject = AlwaysEqual;
+}
+```
+
+#### 结构体数据的所有权
+
+成员用自身拥有所有权的类型而非引用，可以保证只要整个结构体有效则数据都有效，如果使用引用类型来定义，需要加上**生命周期(lifetime)**
+
+
+
+### 结构体使用示例
+
+#### 示例
+
+```rust
+struct Rectangle {
+    width: u32,
+    height: u32,
+}
+
+fn main() {
+    let rect1 = Rectangle {
+        width: 30,
+        height: 50,
+    };
+
+    println!(
+        "The area of the rectangle is {} square pixels.",
+        area(&rect1)
+    );
+}
+
+fn area(rectangle: &Rectangle) -> u32 {
+    rectangle.width * rectangle.height
+}
+```
+
+`area`函数使用结构体的不可变借用，这样`main`会保持`rect1`的所有权并继续使用，所以函数签名用了`&`
+
+#### 通过派生`trait`增加功能
+
+##### 使用println打印调试信息
+
+如果想要在调试程序时打印出所有结构体的字段，尝试使用`printfln!`宏
+
+直接使用`println!("rect1 is {}", rect1);`会报错
+
+提示`error[E0277]: Rectangle doesn't implement std::fmt::Display`
+
+原因是这里`{}`会默认告诉`println!`使用`Display`格式，但是对于结构体因为格式不固定，故没有实现`Display`实现。
+
+但是报错信息中有指明一条路
+
+`note: in format strings you may be able to use {:?} (or {:#?} for pretty-print) instead`
+
+于是将输出格式改成如下形式`println!("rect1 is {:?}", rect1)`
+
+在`{}`中加入`:?`会告诉`println!`使用`Debug`输出格式，后者是一个`trait`，允许打印结构体，以在调试时看到结构体的值。
+
+但此时直接编译仍会报错`error[E0277]: Rectangledoesn't implement Debug`
+
+同样给出了提示信息`note: add #[derive(Debug)] to Rectangle or manually impl Debug for Rectangle`
+
+`Rust`中有实现了打印调试信息功能，但是必须为结构体显式选择该功能，为此在结构体定义之前加上属性 `#[derive(Debug)]`
+
+最后得到的代码如下
+
+```rust
+#[derive(Debug)]
+struct Rectangle {
+    width: u32,
+    height: u32,
+}
+
+fn main() {
+    let rect1 = Rectangle {
+        width: 30,
+        height: 50,
+    };
+
+    println!("rect1 is {:?}", rect1);
+}
+```
+
+最后的格式控制也可以使用`{:#?}`这样会让结构体输出结果更易读
+
+##### 使用`dbg!`宏打印调试信息
+
+该宏会接收一个表达式的所有权，打印出代码中调用`dbg!`宏时所在的文件和行号，表达式的结果，最后返回该值的所有权。但是使用`dbg!`宏会打印到标准错误控制台流(`stderr`)，相对的`println!`会打印到标准输出控制流(`stdout`)
+
+下面是使用例子
+
+```rust
+#[derive(Debug)]
+struct Rectangle {
+    width: u32,
+    height: u32,
+}
+
+fn main() {
+    let scale = 2;
+    let rect1 = Rectangle {
+        width: dbg!(30 * scale),
+        height: 50,
+    };
+
+    dbg!(&rect1);
+}
+```
+
+这里使用`dbg!(30*scale)`时由于会返回使用权，所以用起来就像没有使用该调用一样。下面使用引用以避免`dbg!`拥有所有权。
+
+最后得到的输出如下
+
+```bash
+[src/main.rs:10] 30 * scale = 60
+[src/main.rs:14] &rect1 = Rectangle {
+    width: 60,
+    height: 50,
+}
+```
+
+除了该`trait`，`rust`还提供了很多通过`derive`属性来使用的`trait`，具体在char10会分析。
+
