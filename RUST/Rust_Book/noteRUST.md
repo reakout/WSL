@@ -602,7 +602,7 @@ fn calculate_length(s: &String) -> usize {
 
 `&s1`创建了一个指向值`s1`的引用，但是并不拥有值，故引用停止时，其指向的值也不会被丢弃，函数使用引用作为参数时，无需返回值来交还所有权，因为压根儿未曾拥有过。
 
-创建一个引用的行为称为借用（borrow）
+**创建一个引用的行为称为借用（borrow）**
 
 与CPP不同，修改引用指向的变量是不行的，变量默认不可变，引用也一样。
 
@@ -1051,3 +1051,117 @@ fn main() {
 
 除了该`trait`，`rust`还提供了很多通过`derive`属性来使用的`trait`，具体在char10会分析。
 
+
+
+### 方法语法
+
+与函数类似，使用`fn`关键字，拥有参数和返回值。但是其在结构体的上下文中被定义，且第一个参数总是`self`，代表调用该方法的结构体（类似`Python`）
+
+#### 定义方法
+
+把之前的`area`改成`Rectangle`中的方法，代码如下
+
+```rust
+#[derive(Debug)]
+struct Rectangle {
+    width: u32,
+    height: u32,
+}
+
+impl Rectangle {
+    fn area(&self) -> u32 {
+        self.width * self.height
+    }
+}
+
+fn main() {
+    let rect1 = Rectangle {
+        width: 30,
+        height: 50,
+    };
+
+    println!(
+        "The area of the rectangle is {} square pixels.",
+        rect1.area()
+    );
+}
+```
+
+其中`impl`是`implementation`的缩写，标记该块与`Rectangle`类型相关联，`self`在这里就相当于`Rectangle`故需要再加一个`&`表示使用的是引用。如果想要改变，一般推荐使用可变引用`&mut self`而不是直接获取所有权，后者通常用在当方法把`self`转换成别的实例的情况时，用来防止调用者在转换后再使用原来的实例。
+
+方法与成员可以同名，但通常用来实现返回特定字段的值用，用来实现类似`CPP`中用`public`方法打印`private`成员的效果，这样的方法一般被称为`getters`
+
+与`CPP`中不同，`rust`里由于`self`会在三种格式中固定选择，所以实现了自动解引用，不需要对象本身用`.`，对象的指针用`->`
+
+#### 带有更多参数
+
+增加一个需要获取另一个`Rectangle`实例作为参数的方法`can_hold`用来判断本长方形是否能完全包含另一个长方形。
+
+增加后如下
+
+```rust
+#[derive(Debug)]
+struct Rectangle {
+    width: u32,
+    height: u32,
+}
+
+impl Rectangle {
+    fn area(&self) -> u32 {
+        self.width * self.height
+    }
+
+    fn can_hold(&self, other: &Rectangle) -> bool {
+        self.width > other.width && self.height > other.height
+    }
+}
+
+fn main() {
+    let rect1 = Rectangle {
+        width: 30,
+        height: 50,
+    };
+    let rect2 = Rectangle {
+        width: 10,
+        height: 40,
+    };
+    let rect3 = Rectangle {
+        width: 60,
+        height: 45,
+    };
+
+    println!("Can rect1 hold rect2? {}", rect1.can_hold(&rect2));
+    println!("Can rect1 hold rect3? {}", rect1.can_hold(&rect3));
+}
+```
+
+#### 关联函数
+
+所有在`impl`块中定义的函数称为关联函数(associated function)，由于其可以不以`self`为第一参数，所以其也不是方法，调用使用`::`，比如 `String::from`就是在`String`类型上定义的关联函数。
+
+关联函数常用来作为某些构造函数，比如传一个参数，构造正方形`Rectangle`
+
+```rust
+#[derive(Debug)]
+struct Rectangle {
+    width: u32,
+    height: u32,
+}
+
+impl Rectangle {
+    fn square(size: u32) -> Rectangle {
+        Rectangle {
+            width: size,
+            height: size,
+        }
+    }
+}
+
+fn main() {
+    let sq = Rectangle::square(3);
+}
+```
+
+#### 多个`impl`块
+
+每个结构体允许有多个`impl`块，不影响语义，在泛型和`trait`中会比较实用
