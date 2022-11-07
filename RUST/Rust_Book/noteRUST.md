@@ -1164,4 +1164,194 @@ fn main() {
 
 #### 多个`impl`块
 
-每个结构体允许有多个`impl`块，不影响语义，在泛型和`trait`中会比较实用
+每个结构体允许有多个`impl`块，不影响语义，在泛型和`trait`中会比较实用。
+
+
+
+## Char6 枚举和模式匹配
+
+枚举(enumeriations，简记为enums)允许列举可能的成员(variants)来定义类型。`Rust`中的枚举与`F#` `OCaml` `Haskell`这样的函数式编程语言中的代数数据类型最相似。
+
+### 定义枚举
+
+此处举例使用IP4和IP6标准处理
+
+```rust
+enum IpAddrKind {
+    V4,
+    V6,
+}
+```
+
+#### 枚举值
+
+创建实例使用`::`如`let four = IpAddrKind::v4;` `let six = IpAddrKind::v6`
+
+即枚举的成员位于其标识符的命名空间内，且`four`和`six`都是`IpAddrKind`类型的，可以用一个函数处理两个情况`fn route(ip_type: IpAddrKind) {}`，且对两个成员都能作为参数调用该函数。
+
+使用枚举还能优化结构体
+
+```rust
+
+#![allow(unused)]
+fn main() {
+    enum IpAddrKind {
+        V4,
+        V6,
+    }
+
+    struct IpAddr {
+        kind: IpAddrKind,
+        address: String,
+    }
+
+    let home = IpAddr {
+        kind: IpAddrKind::V4,
+        address: String::from("127.0.0.1"),
+    };
+
+    let loopback = IpAddr {
+        kind: IpAddrKind::V6,
+        address: String::from("::1"),
+    };
+}
+```
+
+可以用更简洁方式表达相同概念，直接使用枚举把**数据**放进每个枚举成员，而不是把枚举作为结构体的一部分，如下
+
+```rust
+#![allow(unused)]
+fn main() {
+    enum IpAddr {
+        V4(String),
+        V6(String),
+    }
+    let home = IpAddr::V4(String::from("127.0.0.1"));
+    let loopback = IpAddr::V6(String::from("::1"));
+}
+```
+
+IpAddr枚举的新定义表明了`V4`和`V6`成员都关联了`String`值，这样就不需要一个额外的结构体了。
+
+用枚举的另一个好处是每个成员可以处理不同类型和数量的数据，如IPv4总是由4个在0～255间的值组成，故此处可以存成4个u8而不是一个String，如下
+
+```rust
+#![allow(unused)]
+fn main() {
+    enum IpAddr {
+        V4(u8, u8, u8, u8),
+        V6(String),
+    }
+    let home = IpAddr::V4(127, 0, 0, 1);
+    let loopback = IpAddr::V6(String::from("::1"));
+}
+```
+
+实际上`Rust`标准库有定义`IpAddr`，它使用同样的枚举和成员，不过把成员中的地址数据嵌到了两个不同形式的结构体内
+
+```rust
+#![allow(unused)]
+fn main() {
+    struct Ipv4Addr {
+        // --snip--
+    }
+    struct Ipv6Addr {
+        // --snip--
+    }
+    enum IpAddr {
+        V4(Ipv4Addr),
+        V6(Ipv6Addr),
+    }
+}
+```
+
+尽管标准库中有包含`IpAddr`的定义，但仍可以创建和使用自定义的类型，因为我们并为将标准库中的定义引入作用域。
+
+枚举包含多个结构体，主要优点在于可以轻易定义一个处理这些不同类型结构体的函数，如以下两种写法
+
+```
+#![allow(unused)]
+fn main() {
+	enum Message {
+    	Quit,
+    	Move { x: i32, y: i32 }, //此处是一个匿名结构体
+    	Write(String),
+    	ChangeColor(i32, i32, i32),
+	}
+    struct QuitMessage; // 类单元结构体
+    struct MoveMessage {
+        x: i32,
+        y: i32,
+    }
+    struct WriteMessage(String); // 元组结构体
+    struct ChangeColorMessage(i32, i32, i32); // 元组结构体
+}
+```
+
+枚举与结构体类似，可以使用`impl`来为枚举定义方法，如下在`message`上定义了一个`call`方法
+
+```rust
+#![allow(unused)]
+fn main() {
+    enum Message {
+        Quit,
+        Move { x: i32, y: i32 },
+        Write(String),
+        ChangeColor(i32, i32, i32),
+    }
+    impl Message {
+        fn call(&self) {
+            // 在这里定义方法体
+        }
+    }
+    let m = Message::Write(String::from("hello"));
+    m.call();
+}
+```
+
+#### Option枚举和其相对于空值的优势
+
+`Option`是标准库定义的枚举，编码了一个非常普遍的场景，即一个值要么有值要么没值（ a value could be something or it could be nothing.For example, if you request the first of a list containing items, you would get a value. If you request the first item of an empty list, you would get nothing.）
+
+`Rust`中并没有其他语言中存在的空值功能。**空值（NULL）**是一个代表没有值的值。在有空值的语言中，变量总是两个状态之一：空值和非空值。问题在于当尝试像非空值一样使用空值时会出现错误。
+
+问题在于实现而非概念，`Rust`中虽然没有空值，但有一个可以编码存在不存在概念的枚举`Option<T>`定义在标准库中，如下
+
+```rust
+#![allow(unused)]
+fn main() {
+    enum Option<T> {
+        Some(T),
+        None,
+    }
+}
+```
+
+该枚举已经被包含在`prelude`（`prelude` 是 `Rust` 自动导入每个 `Rust` 程序的内容的列表。 它保持尽可能的小，并专注于几乎在每个 `Rust` 程序中使用的东西，尤其是 `traits`。）中，不需要显式将其引入作用域。其成员也是如此，不需要`Option::`前缀就可以直接使用`Some`和`None`。使用如下
+
+```rust
+#![allow(unused)]
+fn main() {
+let some_number = Some(5);
+let some_string = Some("a string");
+let absent_number: Option<i32> = None;
+}
+```
+
+`<T>`是泛型参数，暂时可以按模板理解，对于`Some`成员可以包含任意类型，因为编译器可以推断出来。而`None`需要指定类别，因为编译器推断不出来。
+
+使用`Option<T>`比空值好的原因是：`Option<T>`和`T`是不同类型，编译器将不允许项有效值一样使用`Option<T>`，如以下代码不能编译
+
+```rust
+let x: i8 = 5;
+let y: Option<i8> = Some(5);
+let sum = x + y;
+```
+
+换句话说，对于`Option<T>`进行`T`的运算前需要将其转换为`T`，这通常能帮助我们捕获到空值最常见的问题之一：假设某值不为空但实际上为空的情况。
+
+`Option<T>`其他用法参见[文档](https://rustwiki.org/zh-CN/std/option/enum.Option.html)
+
+
+
+### match控制流运算符
