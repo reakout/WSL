@@ -1355,3 +1355,164 @@ let sum = x + y;
 
 
 ### match控制流运算符
+
+`match`控制流运算符允许我们将一个值同一系列模式相比较，并根据相匹配的模式执行相应代码。模式可由字面量、变量、通配符和其他内容组成。
+
+值会通过`match`的每一个模式，并且在遇到**第一个**"符合"的模式时，值进入到相关联的代码块中并被使用。
+
+以硬币分类为例演示`match`如下
+
+```rust
+enum Coin {
+    Penny,
+    Nickel,
+    Dime,
+    Quarter,
+}
+
+fn value_in_cents(coin: Coin) -> u8 {
+    match coin {
+        Coin::Penny => 1,
+        Coin::Nickel => 5,
+        Coin::Dime => 10,
+        Coin::Quarter => 25,
+    }
+}
+
+fn main() {}
+```
+
+与`if`不同，前者必须返回一个布尔值，而`match`可以返回任何类型
+
+`match`的分支由两部分组成：一个模式和一部分代码，两者用`=>`分隔，不同分支之间用`,`分隔。
+
+从上往下执行，如果模式不匹配就执行下一个分支，每个分支的相关联代码是一个表达式，其结果值将作为整个`match`表达式的返回值。
+
+分支后的代码如果较长可以使用大括号，但此时与下一个分支之间不需要使用`,`分隔开，如下
+
+```rust
+enum Coin {
+    Penny,
+    Nickel,
+    Dime,
+    Quarter,
+}
+fn value_in_cents(coin: Coin) -> u8 {
+    match coin {
+        Coin::Penny => {
+            println!("Lucky penny!");
+            1
+        }
+        Coin::Nickel => 5,
+        Coin::Dime => 10,
+        Coin::Quarter => 25,
+    }
+}
+fn main() {}
+```
+
+#### 绑定值的模式
+
+匹配分支另一个功能是可以绑定匹配的模式的部分值。这也是从枚举变量中提取值的方法。
+
+如25美分硬币与州相关，体现在枚举中如下
+
+```rust
+#[derive(Debug)] // 这样可以立刻看到州的名称
+enum UsState {
+    Alabama,
+    Alaska,
+    // --snip--
+}
+enum Coin {
+    Penny,
+    Nickel,
+    Dime,
+    Quarter(UsState),
+}
+fn main() {}
+```
+
+在匹配分支的模式中增加一个叫`state`的变量用于匹配到`Coin::Quarter`时绑定，然后在分支的代码中可以使用该变量，如下
+
+```rust
+fn value_in_cents(coin: Coin) -> u8 {
+    match coin {
+        Coin::Penny => 1,
+        Coin::Nickel => 5,
+        Coin::Dime => 10,
+        Coin::Quarter(state) => {
+            println!("State quarter from {:?}!", state);
+            25
+        }
+    }
+}
+```
+
+以上代码中由于枚举`UsState`未实现`display`故想要用`println`输出需要用调试模式。
+
+#### 匹配`Option<T>`
+
+可以像处理`Coin`枚举一样把`Some`中的值绑定出来使用，如编写一个函数，尝试获取`Option<i32>`如果其中有值，就将其加一。否则返回`None`值。
+
+```rust
+fn main() {
+    fn plus_one(x: Option<i32>) -> Option<i32> {
+        match x {
+            None => None,
+            Some(i) => Some(i + 1),
+        }
+    }
+    let five = Some(5);
+    let six = plus_one(five);
+    let none = plus_one(None);
+}
+```
+
+`Rust`中的匹配必须是穷尽的，如果忽略了某几种模式会编译报错。
+
+#### 通配模式和_占位符
+
+希望对一些特定的值采取特殊操作，而对其他值采取默认操作时。
+
+```rust
+fn main() {
+    let dice_roll = 9;
+    match dice_roll {
+        3 => add_fancy_hat(),
+        7 => remove_fancy_hat(),
+        other => move_player(other),
+    }
+
+    fn add_fancy_hat() {}
+    fn remove_fancy_hat() {}
+    fn move_player(num_spaces: u8) {}
+}
+```
+
+使用`other`表示其他所有情况，类似于`default`
+
+一般放在最后，否则会警告，因为此后的分支永远不会被匹配到。
+
+当不想使用通配符获取的值时，使用`_`，这是一个特殊的模式，可以匹配任意值而不绑定到该值。告诉`Rust`该值不会被使用，故也不会得到相关警告
+
+也可以使用单元值(空元组)来作为`_`分支的代码，如下
+
+```rust
+fn main() {
+    let dice_roll = 9;
+    match dice_roll {
+        3 => add_fancy_hat(),
+        7 => remove_fancy_hat(),
+        _ => (),
+    }
+
+    fn add_fancy_hat() {}
+    fn remove_fancy_hat() {}
+}
+```
+
+直接可以理解为其余分支什么都不做。
+
+### if let 简单控制流
+
